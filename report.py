@@ -6,11 +6,20 @@ import xlrd
 +читаем
 """
 
-rb = xlrd.open_workbook('c:/exportXLS.xls',formatting_info=True)
+rb = xlrd.open_workbook('c:/exportXLS.xls',formatting_info=True,encoding_override='cp1251')
+# не правильное считается дата
 sheet = rb.sheet_by_index(0)
-lst=[]
-for rownum in range(sheet.nrows):
-    row = sheet.row_values(rownum)
-    lst.append(row)
+
+lst=[sheet.row_values(rownum)for rownum in range(sheet.nrows)]
+dict={}
+
+
 for x in lst:
-    pass
+    if dict.has_key(x[3]):
+        dict[x[3]] = dict[x[3]]+abs(x[4])
+
+    else:
+        dict[x[3]] = abs(x[4])
+
+for x in dict:
+    print("%s = %s " % (x, dict[x]))
