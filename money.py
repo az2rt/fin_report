@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import argparse
 import json
 import sqlite3
 from datetime import datetime as dt
@@ -15,7 +16,7 @@ months={
     'june':     ['06','01','31'],
     'july':     ['07','01','30'],
     'august':   ['08','01','31'],
-    'september':['09','01','30'],
+    'september': ['09','01','30'],
     'october':  ['10','01','31'],
     'november': ['11','01','30'],
     'december': ['12','01','31']
@@ -47,18 +48,24 @@ def mysql_fill():
         con.commit()
     cur.close()
 
+
 def mysql_select():
     """
     общая функция для запросов
     :return:
     """
+    pass
+
+
 def get_category():
     return cur.execute('select * from category')
+
 
 def last_first_day(year, month):
     first = year + '-' + month[0] + '-' + month[1]
     last = year + '-' + month[0] + '-' + month[2]
     return first, last
+
 
 def report_by_all_month():
     for current_year in year:
@@ -70,8 +77,7 @@ def report_by_all_month():
 
 
 def report_by_month(year,month):
-    first, last = last_first_day(year, month)
-    print(first,last)
+    first, last = last_first_day(year, get_month_day(month))
     result = cur.execute("SELECT sum(sum) from transactions where date between  ? and ?", (first, last,)).fetchall()
     print(result)
 
@@ -87,10 +93,18 @@ def get_month_day(month):
 написать еще очет за месяц по категориям
 отчет по родительским категориям
 отчет по доходам
-ввод команды из строки
+
 сейчас вижу все траты, сделать так чтобы можно было исключать категории
 """
-report_by_all_month()
-report_by_month(year='2017',month=get_month_day('january'))
-con.close()
 
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='test')
+    parser.add_argument('--all', action='store_true', help='Report by all month')
+    parser.add_argument('-m', '--month', help='Report by one month. Key works only witn --year')
+    parser.add_argument('-y', '--year')
+    args = parser.parse_args()
+    if args.all:
+        report_by_month()
+    elif args.month and args.year:
+        report_by_month(args.year, args.month)
