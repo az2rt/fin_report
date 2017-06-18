@@ -5,26 +5,57 @@ import sqlite3
 from datetime import datetime as dt
 
 year = ['2015', '2016', '2017']
-con = sqlite3.connect('test7.db')
+con = sqlite3.connect('test.db')
 cur = con.cursor()
 months={
     'january':  ['01','01','31'],
-    'february': ['02','01','28'],
-    'march':    ['03','01','30'],
-    'april':    ['04','01','31'],
-    'may':      ['05','01','30'],
-    'june':     ['06','01','31'],
-    'july':     ['07','01','30'],
-    'august':   ['08','01','31'],
-    'september': ['09','01','30'],
-    'october':  ['10','01','31'],
-    'november': ['11','01','30'],
-    'december': ['12','01','31']
+    'february': ['01','02','28'],
+    'march':    ['01','03','30'],
+    'april':    ['01','04','31'],
+    'may':      ['01','05','30'],
+    'june':     ['01','06','31'],
+    'july':     ['01','07','30'],
+    'august':   ['01','08','31'],
+    'september': ['01','09','30'],
+    'october':  ['01','10','31'],
+    'november': ['01','11','30'],
+    'december': ['01','12','31']
 }
+
+class Category:
+
+    def __init__(self, query):
+        self.name = query['name']
+        self.id = query['id']
+        self.type = query['type']
+        self.available = query['available']
+        self.order_id = query['orderId']
+        self.parent_id = query['parentId']
+
+    def return_list(self):
+        return (self.id,self.name,self.type,self.available,self.order_id,self.parent_id)
+
+class Transactions:
+
+    def __init__(self, query):
+        self.name = query['name']
+        self.id = query['id']
+        self.type = query['type']
+        self.category_id = query['categoryId']
+        self.date = query['date']
+        self.sum = query['sum']
+        self.account = query['accountId']
+        self.desc = query['description']
+        self.source = query['source']
+        self.available = query['available']
+
+    def return_list(self):
+        return (self.id, self.name, self.type, self.category_id, self.date, self.sum, self.account, self.desc,
+                self.source, self.available)
 
 
 def mysql_fill():
-    cur.execute('DROP TABLE IF EXISTS category ')
+    cur.execute('DROP TABLE IF EXISTS category')
     cur.execute('CREATE TABLE category (id INTEGER PRIMARY KEY, name VARCHAR(100), type INTEGER, available INTEGER, '
                 'order_id INTEGER, parent_id INTEGER)')
     cur.execute('DROP TABLE IF EXISTS transactions')
@@ -34,17 +65,18 @@ def mysql_fill():
     con.commit()
     file = open("/Users/i.kudryashov/Documents/financePM.data", "r").read()
     json_row = json.loads(file)
-
     for category in json_row['categories']:
+        cat = Category(category)
         cur.execute('INSERT INTO category (id,name,type,available,order_id,parent_id) values (?,?,?,?,?,?)',
-                    tuple(category.values(),))
+                    cat.return_list(),)
         con.commit()
 
     for transaction in json_row['transactions']:
+        trn = Transactions(transaction)
         transaction['date'] = dt.fromtimestamp(int(transaction['date']) / 1000)
         cur.execute('INSERT INTO transactions (id,name,type,category_id,date,sum,account_id,description,'
                     'source,available) values'
-                    '(?,?,?,?,?,?,?,?,?,?)', tuple(transaction.values(),))
+                    '(?,?,?,?,?,?,?,?,?,?)', trn.return_list(),)
         con.commit()
     cur.close()
 
@@ -62,8 +94,8 @@ def get_category():
 
 
 def last_first_day(year, month):
-    first = year + '-' + month[0] + '-' + month[1]
-    last = year + '-' + month[0] + '-' + month[2]
+    first = year + '-' + month[1] + '-' + month[0]
+    last = year + '-' + month[1] + '-' + month[2]
     return first, last
 
 
@@ -81,6 +113,8 @@ def report_by_month(year,month):
     result = cur.execute("SELECT sum(sum) from transactions where date between  ? and ?", (first, last,)).fetchall()
     print(result)
 
+def report_by_year(year):
+    return cur.execute("SELECT sum(sum) from transactions where date between  ? and ?", (year, year,).fetchall())
 
 def report_by_income():
     pass
@@ -103,8 +137,15 @@ if __name__ == '__main__':
     parser.add_argument('--all', action='store_true', help='Report by all month')
     parser.add_argument('-m', '--month', help='Report by one month. Key works only witn --year')
     parser.add_argument('-y', '--year')
+    parser.add_argument('-f', '--fill')
     args = parser.parse_args()
     if args.all:
-        report_by_month()
+        report_by_all_month()
     elif args.month and args.year:
         report_by_month(args.year, args.month)
+    elif args.year:
+        mysql_fill()
+
+
+
+
