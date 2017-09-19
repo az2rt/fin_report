@@ -2,7 +2,8 @@
 import argparse
 import json
 import sqlite3
-import my_transactions
+from my_transactions import Transactions
+from my_category import Category
 from datetime import datetime as dt
 
 con = sqlite3.connect('test.db')
@@ -32,7 +33,7 @@ def mysql_fill():
                 'category_id INTEGER, date DATETIME, sum INTEGER, account_id INTEGER, description VARCHAR(100),'
                 ' source INTEGER, available INTEGER)')
     con.commit()
-    file = open("/Users/i.kudryashov/Documents/financePM.data", "r").read()
+    file = open("/Users/i.kudryashov/Desktop/financePM.data", "r").read()
     json_row = json.loads(file)
     for category in json_row['categories']:
         cat = Category(category)
@@ -41,7 +42,7 @@ def mysql_fill():
         con.commit()
 
     for transaction in json_row['transactions']:
-        trn = my_transactions.Transactions(transaction)
+        trn = Transactions(transaction)
         # проверка на расходы
         if trn.source == 0 and trn.type == 2:
             trn.date = dt.fromtimestamp(int(transaction['date']) / 1000)
@@ -83,17 +84,18 @@ def report_by_month(year, month, type):
     # если передать - строка
     first, last = last_first_day(year, get_month_day(month))
     if type == '1':
-        result = cur.execute("SELECT sum(sum), c.name from transactions t join category c on t.category_id = c.id "
+        result = cur.execute("SELECT sum(sum), c.name, c.id from transactions t join category c on t.category_id = c.id "
                              "where t.date between  ? and ? group by t.category_id "
                              "order by sum(sum) desc", (first, last,)).fetchall()
-        for i in result: print(i)
+        for i in result:
+            print(u"{} {} {}".format(i[2], i[1], i[0]))
     else:
-        result = cur.execute("SELECT sum(sum), c.parent_id from transactions t join category c on t.category_id = c.id "
+        result = cur.execute("SELECT sum(sum), c.parent_id, c.id from transactions t join category c on t.category_id = c.id "
                              "where t.date between  ? and ? group by c.parent_id "
                              "order by sum(sum) desc",
                              (first, last,)).fetchall()
-        for i in result: print(get_category(i[1]), round(i[0]))
-
+        for i in result:
+            print(u"{} {} {}".format(i[2], get_category(i[1]), i[0]))
 
 
 def report_by_year(i):
@@ -103,13 +105,30 @@ def report_by_year(i):
 def get_month_day(month):
     return months[month]
 
-"""
-написать еще очет за месяц по категориям
-+отчет по родительским категориям
-отчет по доходам
 
-сейчас вижу все траты, сделать так чтобы можно было исключать категории
-"""
+def get_current_month():
+    return dt.today()
+
+
+def get_report_by_categorie(category, month=get_current_month()):
+    """
+    строим отчет по родительской категории и месяцу, по дефолту текущий
+    :param category:
+    :param month:
+    :return:
+    """
+    result = cur.execute(("SELECT sum(sum) from transactions where category_id = {} and date between {} and {};").format(category))
+    for i in result:
+        print i
+
+
+    """
+    написать еще очет за месяц по категориям
+    +отчет по родительским категориям
+    отчет по доходам
+
+    сейчас вижу все траты, сделать так чтобы можно было исключать категории
+    """
 
 
 if __name__ == '__main__':
@@ -117,6 +136,7 @@ if __name__ == '__main__':
     parser.add_argument('--all', action='store_true', help='Report by all month')
     parser.add_argument('-m', '--month', help='Report by one month. Key works only witn --year')
     parser.add_argument('-y', '--year')
+    parser.add_argument('-c', '--category', action='store')
     parser.add_argument('-t', '--type', action='store', help='1: full category, 0: only parent, default=0', default=0)
     parser.add_argument('-f', '--fill', action='store_true')
     args = parser.parse_args()
@@ -126,6 +146,8 @@ if __name__ == '__main__':
         if args.year is None:
             args.year = '2017'
         report_by_month(args.year, args.month, args.type)
+    elif args.category:
+        get_report_by_categorie(args.category, args.month)
     elif args.fill:
         mysql_fill()
 
