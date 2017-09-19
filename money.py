@@ -2,13 +2,12 @@
 import argparse
 import json
 import sqlite3
-import Category, Transactions
+import my_transactions
 from datetime import datetime as dt
 
-year = ['2015', '2016', '2017']
 con = sqlite3.connect('test.db')
 cur = con.cursor()
-months={
+months = {
     'january':  ['01','01','31'],
     'february': ['01','02','28'],
     'march':    ['01','03','31'],
@@ -22,37 +21,6 @@ months={
     'november': ['01','11','30'],
     'december': ['01','12','31']
 }
-
-class Category:
-
-    def __init__(self, query):
-        self.name = query['name']
-        self.id = query['id']
-        self.type = query['type']
-        self.available = query['available']
-        self.order_id = query['orderId']
-        self.parent_id = query['parentId']
-
-    def return_list(self):
-        return (self.id,self.name,self.type,self.available,self.order_id,self.parent_id)
-
-class Transactions:
-
-    def __init__(self, query):
-        self.name = query['name']
-        self.id = query['id']
-        self.type = query['type']
-        self.category_id = query['categoryId']
-        self.date = query['date']
-        self.sum = query['sum']
-        self.account = query['accountId']
-        self.desc = query['description']
-        self.source = query['source']
-        self.available = query['available']
-
-    def return_list(self):
-        return (self.id, self.name, self.type, self.category_id, self.date, self.sum, self.account, self.desc,
-                self.source, self.available)
 
 
 def mysql_fill():
@@ -72,33 +40,28 @@ def mysql_fill():
                     cat.return_list(),)
         con.commit()
 
- # здесь кажется класс не нужен, можно функцией
-
     for transaction in json_row['transactions']:
-        trn = Transactions(transaction)
-# а здесь можно проверить на type = 2 и source = 0, чтоб в транзакции попадали только траты
-        trn.date = dt.fromtimestamp(int(transaction['date']) / 1000)
-        cur.execute('INSERT INTO transactions (id,name,type,category_id,date,sum,account_id,description,'
+        trn = my_transactions.Transactions(transaction)
+        # проверка на расходы
+        if trn.source == 0 and trn.type == 2:
+            trn.date = dt.fromtimestamp(int(transaction['date']) / 1000)
+            cur.execute('INSERT INTO transactions (id,name,type,category_id,date,sum,account_id,description,'
                     'source,available) values'
                     '(?,?,?,?,?,?,?,?,?,?)', trn.return_list(),)
-        con.commit()
+            con.commit()
     cur.close()
+    print('Done!')
 
 
-def mysql_select():
-    """
-    общая функция для запросов
-    :return:
-    """
-    pass
+def get_category(id):
+    if id != 0: result = cur.execute('select name from category where id = ?', (id,)).fetchall()
+    else: result = [['None']]
+    return result[0][0]
 
 
-def get_category():
-    return cur.execute('select * from category')
-
-# тут костыль, потому что between почему справа ограничивает срого ( <)
-# придумать что то с этим
 def last_first_day(year, month):
+    # тут костыль, потому что between почему то справа ограничивает срого ( <)
+    # придумать что то с этим
     first = year + '-' + month[1] + '-' + month[0]
     last = year + '-' + '0' + str(int(month[1])+1) + '-' + month[0]
     return first, last
@@ -109,26 +72,32 @@ def report_by_all_month():
     for month in months.values():
         first, last = last_first_day(current_year, month)
         result = cur.execute("SELECT sum(sum) from transactions t join category c on t.category_id = c.id  "
-                                 "where t.date between ? and ? and t.type = 2 and source = 0", (first, last,)).fetchall()
+                                 "where t.date between ? and ?", (first, last,)).fetchall()
+        # print(1,2) выведет на печать (1,2) и терминал не прожует русские буквы выведет их аски код
+        # а если запускать через питон3 - то ок
         if result[0][0] is not None: print(first, round(result[0][0], 2))
 
-# print(1,2) выведет на печать (1,2) и терминал если русские буквы выведет их аски код
-def report_by_month(year,month):
+
+def report_by_month(year, month, type):
+    # прикол, если type не передавать из sys.argv - то тут приходит int
+    # если передать - строка
     first, last = last_first_day(year, get_month_day(month))
-    result = cur.execute("SELECT c.name, sum(sum) from transactions t join category c on t.category_id = c.id "
-                         "where t.date between  ? and ? and t.source = 0 and t.type = 2 group by t.category_id "
-                         "order by sum(sum) desc",
-                         (first, last,)).fetchall()
-    #import pdb; pdb.set_trace()
-    for i in result:
+    if type == '1':
+        result = cur.execute("SELECT sum(sum), c.name from transactions t join category c on t.category_id = c.id "
+                             "where t.date between  ? and ? group by t.category_id "
+                             "order by sum(sum) desc", (first, last,)).fetchall()
+        for i in result: print(i)
+    else:
+        result = cur.execute("SELECT sum(sum), c.parent_id from transactions t join category c on t.category_id = c.id "
+                             "where t.date between  ? and ? group by c.parent_id "
+                             "order by sum(sum) desc",
+                             (first, last,)).fetchall()
+        for i in result: print(get_category(i[1]), round(i[0]))
 
-        print i[0], i[1]
 
-def report_by_year(year):
-    return cur.execute("SELECT sum(sum) from transactions where date between  ? and ? and source=", (year, year,).fetchall())
 
-def report_by_income():
-    pass
+def report_by_year(i):
+    return cur.execute("SELECT sum(sum) from transactions where date between  ? and ? and source=0", (i, i,).fetchall())
 
 
 def get_month_day(month):
@@ -136,7 +105,7 @@ def get_month_day(month):
 
 """
 написать еще очет за месяц по категориям
-отчет по родительским категориям
++отчет по родительским категориям
 отчет по доходам
 
 сейчас вижу все траты, сделать так чтобы можно было исключать категории
@@ -148,12 +117,17 @@ if __name__ == '__main__':
     parser.add_argument('--all', action='store_true', help='Report by all month')
     parser.add_argument('-m', '--month', help='Report by one month. Key works only witn --year')
     parser.add_argument('-y', '--year')
-    parser.add_argument('--fill')
+    parser.add_argument('-t', '--type', action='store', help='1: full category, 0: only parent, default=0', default=0)
+    parser.add_argument('-f', '--fill', action='store_true')
     args = parser.parse_args()
     if args.all:
         report_by_all_month()
-    elif args.month and args.year:
-        report_by_month(args.year, args.month)
+    elif args.month or args.year:
+        if args.year is None:
+            args.year = '2017'
+        report_by_month(args.year, args.month, args.type)
+    elif args.fill:
+        mysql_fill()
 
 
 
