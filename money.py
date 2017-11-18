@@ -5,6 +5,7 @@ import sqlite3
 from my_transactions import Transactions
 from my_category import Category
 from datetime import datetime as dt
+import collections
 
 con = sqlite3.connect('test.db')
 cur = con.cursor()
@@ -70,7 +71,8 @@ def last_first_day(year, month):
 
 def report_by_all_month():
     current_year = '2017'
-    for month in months.values():
+    m = collections.OrderedDict(sorted(months.items(), key=lambda t:[1]))
+    for month in m.values():
         first, last = last_first_day(current_year, month)
         result = cur.execute("SELECT sum(sum) from transactions t join category c on t.category_id = c.id  "
                                  "where t.date between ? and ?", (first, last,)).fetchall()
@@ -119,7 +121,7 @@ def get_report_by_categorie(category, month=get_current_month()):
     """
     result = cur.execute(("SELECT sum(sum) from transactions where category_id = {} and date between {} and {};").format(category))
     for i in result:
-        print i
+        print(i)
 
 
     """
