@@ -4,7 +4,7 @@ import json
 import sqlite3
 from my_transactions import Transactions
 from my_category import Category
-from datetime import datetime as dt
+import datetime as dt
 import collections
 
 con = sqlite3.connect('test.db')
@@ -34,7 +34,7 @@ def mysql_fill():
                 'category_id INTEGER, date DATETIME, sum INTEGER, account_id INTEGER, description VARCHAR(100),'
                 ' source INTEGER, available INTEGER)')
     con.commit()
-    file = open("/Users/i.kudryashov/Desktop/financePM.data", "r").read()
+    file = open("./financePM.data", "r").read()
     json_row = json.loads(file)
     for category in json_row['categories']:
         cat = Category(category)
@@ -64,18 +64,20 @@ def get_category(id):
 def last_first_day(year, month):
     # тут костыль, потому что between почему то справа ограничивает срого ( <)
     # придумать что то с этим
-    first = year + '-' + month[1] + '-' + month[0]
-    last = year + '-' + '0' + str(int(month[1])+1) + '-' + month[0]
+    first = dt.date(int(year),int(month[1]),int(month[0])).isoformat()
+    last = dt.date(int(year), int(month[1]),int(month[2])).isoformat()
+    # first = year + '-' + month[1] + '-' + month[0]
+    # last = year + '-' + '0' + str(int(month[1])+1) + '-' + month[0]
     return first, last
 
 
 def report_by_all_month():
     current_year = '2017'
-    m = collections.OrderedDict(sorted(months.items(), key=lambda t:[1]))
+    m = collections.OrderedDict(sorted(months.items(), key=lambda t:t[1]))
     for month in m.values():
         first, last = last_first_day(current_year, month)
         result = cur.execute("SELECT sum(sum) from transactions t join category c on t.category_id = c.id  "
-                                 "where t.date between ? and ?", (first, last,)).fetchall()
+                             "where t.date between ? and ?", (first, last,)).fetchall()
         # print(1,2) выведет на печать (1,2) и терминал не прожует русские буквы выведет их аски код
         # а если запускать через питон3 - то ок
         if result[0][0] is not None: print(first, round(result[0][0], 2))
@@ -85,19 +87,16 @@ def report_by_month(year, month, type):
     # прикол, если type не передавать из sys.argv - то тут приходит int
     # если передать - строка
     first, last = last_first_day(year, get_month_day(month))
+    import pdb; pdb.set_trace()
     if type == '1':
-        result = cur.execute("SELECT sum(sum), c.name, c.id from transactions t join category c on t.category_id = c.id "
-                             "where t.date between  ? and ? group by t.category_id "
-                             "order by sum(sum) desc", (first, last,)).fetchall()
-        for i in result:
-            print(u"{} {} {}".format(i[2], i[1], i[0]))
+        result = cur.execute("SELECT sum(sum), c.id from transactions t join category c on t.category_id = c.id "
+                             "where t.date between  ? and ? group by t.category_id", (first, last,)).fetchall()
     else:
-        result = cur.execute("SELECT sum(sum), c.parent_id, c.id from transactions t join category c on t.category_id = c.id "
-                             "where t.date between  ? and ? group by c.parent_id "
-                             "order by sum(sum) desc",
+        result = cur.execute("SELECT sum(sum), c.id from transactions t join category c on t.category_id = c.id "
+                             "where t.date between  ? and ? group by c.parent_id ",
                              (first, last,)).fetchall()
-        for i in result:
-            print(u"{} {} {}".format(i[2], get_category(i[1]), i[0]))
+    for i in sorted(result, key=lambda t: t[0], reverse=True):
+        print(u"{:>25} {}".format(get_category(i[1]), i[0]))
 
 
 def report_by_year(i):
@@ -109,7 +108,7 @@ def get_month_day(month):
 
 
 def get_current_month():
-    return dt.today()
+    return dt.datetime.now().month
 
 
 def get_report_by_categorie(category, month=get_current_month()):
@@ -119,7 +118,8 @@ def get_report_by_categorie(category, month=get_current_month()):
     :param month:
     :return:
     """
-    result = cur.execute(("SELECT sum(sum) from transactions where category_id = {} and date between {} and {};").format(category))
+    first, last = last_first_day(dt.datetime.now().year, month)
+    result = cur.execute(("SELECT sum(sum) from transactions where category_id = {} and date between {} and {};").format(category, first, last))
     for i in result:
         print(i)
 
@@ -144,12 +144,12 @@ if __name__ == '__main__':
     args = parser.parse_args()
     if args.all:
         report_by_all_month()
-    elif args.month or args.year:
+    elif args.month:
         if args.year is None:
-            args.year = '2017'
+            args.year = str(dt.datetime.now().year)
         report_by_month(args.year, args.month, args.type)
     elif args.category:
-        get_report_by_categorie(args.category, args.month)
+        get_report_by_categorie(args.category)
     elif args.fill:
         mysql_fill()
 
