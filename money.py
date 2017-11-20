@@ -81,11 +81,11 @@ def report_by_all_month():
         if result[0][0] is not None: print(first, round(result[0][0], 2))
 
 
-def report_by_month(year, month, type):
+def report_by_month(year, month, type=1):
     # прикол, если type не передавать из sys.argv - то тут приходит int
     # если передать - строка
     first, last = last_first_day(year, get_month_day(month))
-    if type == '1':
+    if int(type):
         result = cur.execute("SELECT sum(sum), c.name, c.id from transactions t join category c on t.category_id = c.id "
                              "where t.date between  ? and ? group by t.category_id "
                              "order by sum(sum) desc", (first, last,)).fetchall()
@@ -96,8 +96,9 @@ def report_by_month(year, month, type):
                              "where t.date between  ? and ? group by c.parent_id "
                              "order by sum(sum) desc",
                              (first, last,)).fetchall()
-        for i in result:
-            print(u"{} {} {}".format(i[2], get_category(i[1]), i[0]))
+
+        for i in sorted(result, key=lambda t: t[0], reverse=True):
+            print(u"{:>25} | {:25} | {}".format(get_category(i[2]), get_category(i[1]), i[0]))
 
 
 def report_by_year(i):
@@ -105,21 +106,50 @@ def report_by_year(i):
 
 
 def get_month_day(month):
+    """
+    получить цифровое представление месяцв
+    :param month:
+    :return:
+    """
     return months[month]
 
+def get_current_year():
+    return dt.now().year
 
 def get_current_month():
-    return dt.today()
+    """
+    получить текущий месяц
+    :return:
+
+    """
+    number_month = {
+        '01': 'january',
+        '02': 'february',
+        '03': 'march',
+        '04': 'april',
+        '05': 'may',
+        '06': 'june',
+        '07': 'july',
+        '08': 'august',
+        '09': 'september',
+        '10': 'october',
+        '11': 'november',
+        '12': 'december'
+    }
+    #import pdb; pdb.set_trace()
+    return months[number_month[str(dt.now().month)]]
 
 
-def get_report_by_categorie(category, month=get_current_month()):
+def get_report_by_categorie(category, month, year=get_current_year()):
     """
     строим отчет по родительской категории и месяцу, по дефолту текущий
+    вот тут проблемка, тк хотел сделать если не приходит месяц, брать текущий то путаюсь с переводами месяца
     :param category:
     :param month:
     :return:
     """
-    result = cur.execute(("SELECT sum(sum) from transactions where category_id = {} and date between {} and {};").format(category))
+    first, last = last_first_day(str(year), month)
+    result = cur.execute(("SELECT sum(sum) from transactions where category_id = ? and date between ? and ?;", (category, first, last))).fetchall()
     for i in result:
         print(i)
 
@@ -149,7 +179,17 @@ if __name__ == '__main__':
             args.year = '2017'
         report_by_month(args.year, args.month, args.type)
     elif args.category:
-        get_report_by_categorie(args.category, args.month)
+        for i in cur.execute("select distinct(id), name from category").fetchall():
+            print("%s %s" % (i[0], i[1]))
+        x = input()
+        """
+        было бы круто добавить интерактив, но перед вывести все основные категории, по запросу дочерние
+        после выбора категории уже строить отчет
+        """
+        if args.month:
+            get_report_by_categorie(x, args.month)
+        else:
+            get_report_by_categorie(x, get_current_month())
     elif args.fill:
         mysql_fill()
 
