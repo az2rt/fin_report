@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 class Category:
 
     def __init__(self, query):
@@ -9,17 +11,10 @@ class Category:
         self.parent_id = query['parentId']
 
     def return_list(self):
-        return (self.id,self.name,self.type,self.available,self.order_id,self.parent_id)
+        return (self.id, self.name, self.type, self.available, self.order_id, self.parent_id)
+
+    def get_category_id(self):
+        return self.id
 
     def get_category_name(self):
         return self.name
-
-    def get_all_category(self):
-        pass
-
-    def get_category(id):
-        if id:
-            result = ConnectionToDb.cur.execute('select name from category where id = ?', (id,)).fetchall()
-        else:
-            result = [['None']]
-        return result[0][0]
