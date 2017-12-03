@@ -46,7 +46,7 @@ def mysql_fill():
         trn = Transactions(transaction)
         # проверка на расходы
         if trn.source == 0 and trn.type == 2:
-            trn.date = dt.fromtimestamp(int(transaction['date']) / 1000)
+            trn.date = dt.datetime.fromtimestamp(int(transaction['date']) / 1000)
             cur.execute('INSERT INTO transactions (id,name,type,category_id,date,sum,account_id,description,'
                     'source,available) values'
                     '(?,?,?,?,?,?,?,?,?,?)', trn.return_list(),)
@@ -87,7 +87,6 @@ def report_by_month(year, month, type):
     # прикол, если type не передавать из sys.argv - то тут приходит int
     # если передать - строка
     first, last = last_first_day(year, get_month_day(month))
-    import pdb; pdb.set_trace()
     if type == '1':
         result = cur.execute("SELECT sum(sum), c.id from transactions t join category c on t.category_id = c.id "
                              "where t.date between  ? and ? group by t.category_id", (first, last,)).fetchall()
@@ -95,9 +94,9 @@ def report_by_month(year, month, type):
         result = cur.execute("SELECT sum(sum), c.id from transactions t join category c on t.category_id = c.id "
                              "where t.date between  ? and ? group by c.parent_id ",
                              (first, last,)).fetchall()
-
-        for i in sorted(result, key=lambda t: t[0], reverse=True):
-            print(u"{:>25} | {:25} | {}".format(get_category(i[2]), get_category(i[1]), i[0]))
+    import pdb; pdb.set_trace()
+    for i in sorted(result, key=lambda t: t[0], reverse=True):
+        print(u"{:>25} | {:25} ".format(get_category(i[1]), i[0]))
 
 
 def report_by_year(i):
