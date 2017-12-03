@@ -4,6 +4,7 @@ import json
 import sqlite3
 from my_transactions import Transactions
 from my_category import Category
+import Category
 import datetime as dt
 import collections
 
@@ -22,6 +23,21 @@ months = {
     'october':  ['01','10','31'],
     'november': ['01','11','30'],
     'december': ['01','12','31']
+}
+
+months_words = {
+    1:'january',
+    2: 'february',
+    3: 'march',
+    4: 'april',
+    5: 'may',
+    6: 'june',
+    7: 'july',
+    8: 'august',
+    9: 'september',
+    10: 'october',
+    11: 'november',
+    12: 'december'
 }
 
 
@@ -56,7 +72,7 @@ def mysql_fill():
 
 
 def get_category(id):
-    if id != 0: result = cur.execute('select name from category where id = ?', (id,)).fetchall()
+    if id: result = cur.execute('select name from category where id = ?', (id,)).fetchall()
     else: result = [['None']]
     return result[0][0]
 
@@ -94,7 +110,6 @@ def report_by_month(year, month, type):
         result = cur.execute("SELECT sum(sum), c.id from transactions t join category c on t.category_id = c.id "
                              "where t.date between  ? and ? group by c.parent_id ",
                              (first, last,)).fetchall()
-    import pdb; pdb.set_trace()
     for i in sorted(result, key=lambda t: t[0], reverse=True):
         print(u"{:>25} | {:25} ".format(get_category(i[1]), i[0]))
 
@@ -115,7 +130,7 @@ def get_current_year():
     return dt.now().year
 
 def get_current_month():
-    return dt.datetime.now().month
+    return months[months_words[dt.datetime.now().month]]
 
 
 def get_report_by_categorie(category, month=get_current_month()):
@@ -143,30 +158,24 @@ def get_report_by_categorie(category, month=get_current_month()):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='test')
     parser.add_argument('--all', action='store_true', help='Report by all month')
-    parser.add_argument('-m', '--month', help='Report by one month. Key works only witn --year')
+    parser.add_argument('-rm', '--report_by_month', help='Report by one month. Key works only witn --year')
     parser.add_argument('-y', '--year')
+    parser.add_argument('--show', action='store_true')
     parser.add_argument('-c', '--category', action='store')
     parser.add_argument('-t', '--type', action='store', help='1: full category, 0: only parent, default=0', default=0)
     parser.add_argument('-f', '--fill', action='store_true')
     args = parser.parse_args()
     if args.all:
         report_by_all_month()
-    elif args.month:
+    elif args.report_by_month:
         if args.year is None:
             args.year = str(dt.datetime.now().year)
-        report_by_month(args.year, args.month, args.type)
+        report_by_month(args.year, args.report_by_month, args.type)
     elif args.category:
-        for i in cur.execute("select distinct(id), name from category").fetchall():
-            print("%s %s" % (i[0], i[1]))
-        x = input()
-        """
-        было бы круто добавить интерактив, но перед вывести все основные категории, по запросу дочерние
-        после выбора категории уже строить отчет
-        """
-        if args.month:
-            get_report_by_categorie(x, args.month)
-        else:
-            get_report_by_categorie(x, get_current_month())
+        get_report_by_categorie(args.category)
+    elif args.show:
+        test = Category()
+        import pdb; pdb.set_trace()
     elif args.fill:
         mysql_fill()
 
