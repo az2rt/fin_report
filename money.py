@@ -6,12 +6,12 @@ import pprint
 from datetime import datetime as dt
 from dateutil.relativedelta import relativedelta
 
-from transactions import Transactions
-from category import Category
-from utils import MONTHS, MONTHS_WORDS
+from models.transactions import Transactions
+from models.category import Category
+from utils.utils import MONTHS, MONTHS_WORDS
 
 
-con = sqlite3.connect('test.db')
+con = sqlite3.connect('./tmp/test.db')
 cur = con.cursor()
 
 
@@ -33,7 +33,7 @@ def prepare_db(func):
 
 @prepare_db
 def mysql_fill():
-    with open('./financePM.data', 'r') as f:
+    with open('./tmp/financePM.data', 'r') as f:
         json_row = json.loads(f.read())
 
     for category in json_row['categories']:
