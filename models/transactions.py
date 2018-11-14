@@ -18,6 +18,3 @@ class Transactions:
     def return_list(self):
         return (self.id, self.name, self.type, self.category_id, self.date, self.sum, self.account, self.desc,
                 self.source, self.available)
-
-
-

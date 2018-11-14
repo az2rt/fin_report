@@ -27,10 +27,3 @@ class Category:
 
     def get_all_category(self):
         pass
-
-    # def get_category(id):
-    #     if id:
-    #         result = ConnectionToDb.cur.execute('select name from category where id = ?', (id,)).fetchall()
-    #     else:
-    #         result = [['None']]
-    #     return result[0][0]

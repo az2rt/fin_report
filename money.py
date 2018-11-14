@@ -44,9 +44,8 @@ def mysql_fill():
 
     for transaction in json_row['transactions']:
         trn = Transactions(transaction)
-        # проверка на расходы
-        if trn.source == 0 and trn.type == 2:
 
+        if trn.source == 0 and trn.type == 2:
             trn.date = dt.fromtimestamp(int(transaction['date']) / 1000)
             cur.execute('INSERT INTO transactions (id,name,type,category_id,date,sum,account_id,description,'
                     'source,available) values (?,?,?,?,?,?,?,?,?,?)', trn.return_list(),)
@@ -90,9 +89,6 @@ def plus_one_year(old_date):
 
 
 def report_by_all_month():
-    """
-    report by per year on all categories
-    """
     first_transaction = get_first_transactions()
     last_transaction = get_last_transactions()
     current_year = date_from_str_to_datetime(first_transaction)
@@ -108,7 +104,6 @@ def report_by_all_month():
 
 
 def report_by_month(year, month, type_report):
-
     first, last = last_first_day(year, MONTHS[month])
 
     if type_report:
@@ -118,8 +113,9 @@ def report_by_month(year, month, type_report):
         result = cur.execute("SELECT sum(sum), c.id from transactions t join category c on t.category_id = c.id "
                              "where t.date between  ? and ? group by c.parent_id ",
                              (first, last,)).fetchall()
-    if result == []:
-        print('Dont find any transactions by this date: {} {}.'.format(month, year))
+    if not result:
+        print('Didn\'t found any transactions by this date: {} {}.'.format(month, year))
+
     for i in sorted(result, key=lambda t: t[0], reverse=True):
         print(u"{:>25} {}".format(get_category(i[1]), i[0]))
 
@@ -129,19 +125,18 @@ def get_current_month():
 
 
 def get_report_by_categorie(category, month=get_current_month()):
-    """
-    строим отчет по родительской категории и месяцу, по дефолту текущий
-    """
     first, last = last_first_day(dt.now().year, month)
     result = cur.execute(
         (
-            "SELECT sum(sum) from transactions where category_id = {} and date between {} and {};").format(
+            "SELECT sum(sum) from transactions where category_id = {} and date between '{}' and '{}';").format(
             category,
             first,
             last
-        ))
+        )).fetchone()
     for i in result:
-        pprint.pprint(i)
+        category_name = get_category(category)
+        print("Результат запрос на категорию {} на период {}-{}".format(category_name, first, last))
+        print(category_name, result[0])
 
 
 if __name__ == '__main__':
