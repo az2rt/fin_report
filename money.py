@@ -2,33 +2,17 @@
 import argparse
 import json
 import sqlite3
-import pprint
 from datetime import datetime as dt
 from dateutil.relativedelta import relativedelta
 
 from models.transactions import Transactions
 from models.category import Category
-from utils.utils import MONTHS, MONTHS_WORDS
+from utils import MONTHS, MONTHS_WORDS
+from utils import prepare_db
 
 
 con = sqlite3.connect('./tmp/test.db')
 cur = con.cursor()
-
-
-def prepare_db(func):
-    def wrapped():
-        cur.execute('DROP TABLE IF EXISTS category')
-        cur.execute(
-            'CREATE TABLE category (id INTEGER PRIMARY KEY, name VARCHAR(100), type INTEGER, available INTEGER, '
-            'order_id INTEGER, parent_id INTEGER)')
-        cur.execute('DROP TABLE IF EXISTS transactions')
-        cur.execute('CREATE TABLE transactions (id INTEGER PRIMARY KEY, name VARCHAR(100), type INTEGER, '
-                    'category_id INTEGER, date DATETIME, sum INTEGER, account_id INTEGER, description VARCHAR(100),'
-                    ' source INTEGER, available INTEGER)')
-        con.commit()
-        func()
-        cur.close()
-    return wrapped
 
 
 @prepare_db
@@ -133,7 +117,7 @@ def get_report_by_categorie(category, month=get_current_month()):
             first,
             last
         )).fetchone()
-    for i in result:
+    for _ in result:
         category_name = get_category(category)
         print("Результат запрос на категорию {} на период {}-{}".format(category_name, first, last))
         print(category_name, result[0])
