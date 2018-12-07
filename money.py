@@ -92,10 +92,10 @@ def report_by_month(year, month, type_report):
 
     if type_report:
         result = cur.execute("SELECT sum(sum), c.id from transactions t join category c on t.category_id = c.id "
-                             "where t.date between  ? and ? group by t.category_id", (first, last,)).fetchall()
+                             "where t.date between ? and ? group by t.category_id", (first, last,)).fetchall()
     else:
         result = cur.execute("SELECT sum(sum), c.id from transactions t join category c on t.category_id = c.id "
-                             "where t.date between  ? and ? group by c.parent_id ",
+                             "where t.date between ? and ? group by c.parent_id ",
                              (first, last,)).fetchall()
     if not result:
         print('Didn\'t found any transactions by this date: {} {}.'.format(month, year))
@@ -108,7 +108,7 @@ def get_current_month():
     return MONTHS[MONTHS_WORDS[dt.now().month]]
 
 
-def get_report_by_categorie(category, month=get_current_month()):
+def get_report_by_category(category, month=get_current_month()):
     first, last = last_first_day(dt.now().year, month)
     result = cur.execute(
         (

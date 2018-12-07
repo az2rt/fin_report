@@ -1,7 +1,6 @@
 #-*- coding: utf-8 -*-
 import sqlite3
 
-
 MONTHS = {
     'january':  ['01','01','31'],
     'february': ['01','02','28'],
@@ -41,7 +40,7 @@ def prepare_db(func):
     con = sqlite3.connect('./tmp/test.db')
     cur = con.cursor()
     def wrapped():
-        cur.execute('DROP TABLE IF EXISTS category')
+        cur.execute('DROP TABLE IF EXISTS category;')
         cur.execute(
             'CREATE TABLE category (id INTEGER PRIMARY KEY, name VARCHAR(100), type INTEGER, available INTEGER, '
             'order_id INTEGER, parent_id INTEGER)')
