@@ -2,33 +2,17 @@
 import argparse
 import json
 import sqlite3
-import pprint
 from datetime import datetime as dt
 from dateutil.relativedelta import relativedelta
 
 from models.transactions import Transactions
 from models.category import Category
-from utils.utils import MONTHS, MONTHS_WORDS
+from utils import MONTHS, MONTHS_WORDS
+from utils import prepare_db
 
 
 con = sqlite3.connect('./tmp/test.db')
 cur = con.cursor()
-
-
-def prepare_db(func):
-    def wrapped():
-        cur.execute('DROP TABLE IF EXISTS category')
-        cur.execute(
-            'CREATE TABLE category (id INTEGER PRIMARY KEY, name VARCHAR(100), type INTEGER, available INTEGER, '
-            'order_id INTEGER, parent_id INTEGER)')
-        cur.execute('DROP TABLE IF EXISTS transactions')
-        cur.execute('CREATE TABLE transactions (id INTEGER PRIMARY KEY, name VARCHAR(100), type INTEGER, '
-                    'category_id INTEGER, date DATETIME, sum INTEGER, account_id INTEGER, description VARCHAR(100),'
-                    ' source INTEGER, available INTEGER)')
-        con.commit()
-        func()
-        cur.close()
-    return wrapped
 
 
 @prepare_db
@@ -108,10 +92,10 @@ def report_by_month(year, month, type_report):
 
     if type_report:
         result = cur.execute("SELECT sum(sum), c.id from transactions t join category c on t.category_id = c.id "
-                             "where t.date between  ? and ? group by t.category_id", (first, last,)).fetchall()
+                             "where t.date between ? and ? group by t.category_id", (first, last,)).fetchall()
     else:
         result = cur.execute("SELECT sum(sum), c.id from transactions t join category c on t.category_id = c.id "
-                             "where t.date between  ? and ? group by c.parent_id ",
+                             "where t.date between ? and ? group by c.parent_id ",
                              (first, last,)).fetchall()
     if not result:
         print('Didn\'t found any transactions by this date: {} {}.'.format(month, year))
@@ -124,7 +108,7 @@ def get_current_month():
     return MONTHS[MONTHS_WORDS[dt.now().month]]
 
 
-def get_report_by_categorie(category, month=get_current_month()):
+def get_report_by_category(category, month=get_current_month()):
     first, last = last_first_day(dt.now().year, month)
     result = cur.execute(
         (
@@ -133,7 +117,7 @@ def get_report_by_categorie(category, month=get_current_month()):
             first,
             last
         )).fetchone()
-    for i in result:
+    for _ in result:
         category_name = get_category(category)
         print("Результат запрос на категорию {} на период {}-{}".format(category_name, first, last))
         print(category_name, result[0])
